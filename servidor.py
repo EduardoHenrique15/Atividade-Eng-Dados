@@ -4,21 +4,15 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from assistente import AssistenteGPT
-from banco import BancoNeon
+from banco import BancoComLimite
 
-# 1) Lê as variáveis do arquivo .env (NEON e GPT)
 load_dotenv()
 
-# 2) Cria os objetos que fazem o trabalho de verdade
-banco = BancoNeon(os.getenv("NEON"))
-gpt = AssistenteGPT(os.getenv("GPT"))
+banco = BancoComLimite(os.getenv("NEON"))
+gpt = AssistenteGPT(os.getenv("GPT"), os.getenv("MODELO", "gpt-6-luna"))
 
-# 3) Cria o servidor MCP
 mcp = FastMCP("Servidor Neon + GPT")
 
-
-# 4) Cada função com @mcp.tool vira uma ferramenta disponível para a IA.
-#    A docstring é a descrição que a IA lê para saber quando usar a ferramenta.
 
 @mcp.tool
 def listar_tabelas() -> list[str]:
@@ -47,5 +41,13 @@ def perguntar_ao_banco(pergunta: str) -> dict:
     return {"sql": sql, "dados": dados, "resposta": resposta}
 
 
+@mcp.tool
+def contar_linhas(tabela: str) -> int:
+    """Conta quantas linhas uma tabela possui."""
+    if tabela not in banco.listar_tabelas():
+        raise ValueError(f"Tabela '{tabela}' não existe")
+    return banco.consultar(f"SELECT COUNT(*) AS total FROM {tabela}")[0]["total"]
+
+
 if __name__ == "__main__":
-    mcp.run()  # padrão: transporte stdio
+    mcp.run()

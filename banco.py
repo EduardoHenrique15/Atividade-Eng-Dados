@@ -1,27 +1,25 @@
+from contextlib import closing
+
 import psycopg2
 
 
 class BancoNeon:
     def __init__(self, url_conexao):
-        # Guarda a URL de conexão (vem do arquivo .env)
         self.url_conexao = url_conexao
 
     def _conectar(self):
-        # Abre uma conexão nova com o banco
         conexao = psycopg2.connect(self.url_conexao)
-        # Modo somente leitura: o banco recusa INSERT, UPDATE, DELETE, DROP...
         conexao.set_session(readonly=True)
         return conexao
 
     def consultar(self, sql):
         """Executa um SELECT e devolve uma lista de dicionários."""
-        with self._conectar() as conexao:
+        with closing(self._conectar()) as conexao:
             with conexao.cursor() as cursor:
                 cursor.execute(sql)
                 colunas = [coluna[0] for coluna in cursor.description]
                 linhas = cursor.fetchall()
 
-        # Transforma cada linha em um dicionário {coluna: valor}
         return [dict(zip(colunas, linha)) for linha in linhas]
 
     def listar_tabelas(self):
@@ -36,9 +34,8 @@ class BancoNeon:
 
     def descrever_tabela(self, tabela):
         """Retorna as colunas e os tipos de uma tabela."""
-        with self._conectar() as conexao:
+        with closing(self._conectar()) as conexao:
             with conexao.cursor() as cursor:
-                # O %s evita SQL Injection: o psycopg2 trata o valor com segurança
                 cursor.execute(
                     """
                     SELECT column_name, data_type
@@ -58,3 +55,13 @@ class BancoNeon:
             lista = ", ".join(f"{c['coluna']} ({c['tipo']})" for c in colunas)
             texto += f"- {tabela}: {lista}\n"
         return texto
+
+
+class BancoComLimite(BancoNeon):
+    def __init__(self, url_conexao, limite=10):
+        super().__init__(url_conexao)
+        self.limite = limite
+
+    def consultar(self, sql):
+        linhas = super().consultar(sql)
+        return linhas[: self.limite]

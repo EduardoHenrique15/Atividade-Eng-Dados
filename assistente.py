@@ -26,7 +26,6 @@ class AssistenteGPT:
             f"Tabelas:\n{esquema}"
         )
         sql = self.perguntar(instrucao, pergunta)
-        # Remove ``` caso o modelo coloque mesmo assim
         return sql.replace("```sql", "").replace("```", "").strip()
 
     def explicar_resultado(self, pergunta, dados):
