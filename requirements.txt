@@ -1,0 +1,4 @@
+openai
+fastmcp
+psycopg2-binary
+python-dotenv
